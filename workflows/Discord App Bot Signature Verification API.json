@@ -1,0 +1,222 @@
+{
+  "name": "Discord App Bot Signature Verification API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "06ee7a21-4f36-499f-9d37-00401cf9e682",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        -240
+      ],
+      "id": "1f7e53ed-a909-4c61-8c59-80bd303f2ca7",
+      "name": "Discord POSTs here",
+      "webhookId": "06ee7a21-4f36-499f-9d37-00401cf9e682"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6e6dac66-8c43-4b2d-9852-55e5a4a4b9b7",
+              "name": "toSign",
+              "value": "={{ $json.headers['x-signature-timestamp'] }}{{ JSON.stringify($json.body) }}",
+              "type": "string"
+            },
+            {
+              "id": "efc5c4b5-62da-4cd1-81e8-ba7954959a1c",
+              "name": "signature",
+              "value": "={{ $json.headers[\"x-signature-ed25519\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "015baeac-4403-4f11-bb00-165f85badaf5",
+              "name": "publicKey",
+              "value": "a-long-string-of-characters-available-under-PUBLIC-KEY-in-Discord-App-General-Information-tab",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -656,
+        -240
+      ],
+      "id": "1fd426c6-020c-4301-8bb8-2fb939540f91",
+      "name": "Discord App Config"
+    },
+    {
+      "parameters": {
+        "content": "## Discord App POST API Signature Verification Scheme\n\nUses community node n8n-tweetnacl as salt signature verification node. Discord occasionally pings to test whether the Signature validation scheme returns expected results -- testing both valid and invalid timestamps, usually in a quick pair of POSTs.\n\n### Setup:\n\n1. Get `Webhook Production URL` from first node, enter in Discord Bot setting as `Interactions Endpoint URL`\n2. Get `PUBLIC KEY` from Discord, enter in Discord App Config node as `publicKey` value",
+        "height": 464,
+        "width": 1248
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        -544
+      ],
+      "id": "89892243-5535-4116-8008-de7a960067bf",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "message": "={{ $json.toSign }}",
+        "signature": "={{ $json.signature }}",
+        "publicKey": "={{ $json.publicKey }}"
+      },
+      "type": "n8n-nodes-tweetnacl.tweetNaCl",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        -240
+      ],
+      "id": "5642bf63-6f3f-426d-8097-b708a699a5a4",
+      "name": "Verify Signature"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d6647cd3-cec1-431c-b0a5-0a1598bd373f",
+              "leftValue": "={{ $json.isVerified }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -224,
+        -240
+      ],
+      "id": "84fa3a1d-1ebc-4373-81d9-971ee7ffdf88",
+      "name": "If isVerified?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"type\": 1\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        48,
+        -400
+      ],
+      "id": "d226f0e1-8469-4af2-9c3c-f9391e327e86",
+      "name": "Return Success"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        48,
+        -224
+      ],
+      "id": "0829fe91-2c50-4471-8815-45341435b366",
+      "name": "Return Failure"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Discord POSTs here": {
+      "main": [
+        [
+          {
+            "node": "Discord App Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord App Config": {
+      "main": [
+        [
+          {
+            "node": "Verify Signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Signature": {
+      "main": [
+        [
+          {
+            "node": "If isVerified?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If isVerified?": {
+      "main": [
+        [
+          {
+            "node": "Return Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Failure": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2d58ac3a-99c7-4f0a-b7b3-7049df8d6356",
+  "meta": {
+    "instanceId": "6b530e97c666789f314be9f51ca558451374fddb80a7646d1b4d5d893e2d41f1"
+  },
+  "id": "bXWV3DgUIJGRKYG2",
+  "tags": []
+}
