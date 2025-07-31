@@ -1,0 +1,412 @@
+{
+  "name": "postgai.me support Discord Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "guildIds": [
+          "1400079346525274244"
+        ],
+        "pattern": "every",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-discord-trigger.discordTrigger",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        -160
+      ],
+      "id": "5bf6f6c3-e7f5-4145-9e90-de7df90e1757",
+      "name": "Discord Trigger",
+      "credentials": {
+        "discordBotTriggerApi": {
+          "id": "zR0Nn3nsdyw2LPfG",
+          "name": "postgai.me support Discord Bot Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = $('Gather server-channel context').all();\n\nconst parseAttachmentNote = (attachment) => {\n  const fileUrl = attachment.url || attachment.proxy_url || \"\";\n  const filename = attachment.filename || \"file\";\n  const extension = filename.split('.').pop().toLowerCase();\n\n  const parsable = [\"txt\", \"md\", \"json\", \"csv\"];\n  if (parsable.includes(extension)) {\n    return `\\n\\n[Attached file: ${filename}](${fileUrl})`;\n  } else {\n    return `\\n\\n[Unparsed attachment: ${filename}](${fileUrl})`;\n  }\n};\n\nconst openAIFormattedMessages = messages\n  .filter(m => m.json && m.json.content && m.json.author)\n  .map(m => {\n    const { author, content, timestamp, attachments } = m.json;\n    const globalName = author.global_name || \"unknown\";\n    const username = author.username || \"unknown_user\";\n\n    let messageContent = content.trim();\n\n    if (attachments && attachments.length > 0) {\n      const notes = attachments.map(parseAttachmentNote).join(\"\\n\");\n      messageContent += notes;\n    }\n\n    return {\n      role: \"user\",\n      name: `${globalName}: ${username}`,\n      content: messageContent,\n      timestamp: timestamp || null\n    };\n  });\n\nreturn openAIFormattedMessages.map(m => ({ json: m }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        -160
+      ],
+      "id": "b6c5a289-8092-42dd-9155-9a87916ceb93",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "chat",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        -160
+      ],
+      "id": "73fd40bb-bc50-47ce-a75a-27905267b212",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "value": "={{ $('Discord Trigger').first().json.guildId }}",
+          "mode": "id"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Discord Trigger').first().json.channelId }}",
+          "mode": "id"
+        },
+        "content": "={{ $json.message.content.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -272
+      ],
+      "id": "d2e512c3-9c45-476b-8f31-e9bc1b96362d",
+      "name": "Send a message",
+      "webhookId": "0b8a1aad-563d-4621-8cbe-30753c50ba11",
+      "credentials": {
+        "discordBotApi": {
+          "id": "TyIigtGqY62KbWyM",
+          "name": "postgai.me support Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "guildId": {
+          "__rl": true,
+          "value": "={{ $json.guildId }}",
+          "mode": "id"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $json.channelId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -160
+      ],
+      "id": "f469ff33-dda6-4dba-930d-a9cd0c104daf",
+      "name": "Gather server-channel context",
+      "webhookId": "a40e7677-e203-46c2-a018-a97ec48569cb",
+      "credentials": {
+        "discordBotApi": {
+          "id": "TyIigtGqY62KbWyM",
+          "name": "postgai.me support Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dd895b42-3931-4908-b90f-fcd7519e127b",
+              "leftValue": "={{ $json.message.content.respond }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        -128
+      ],
+      "id": "7e1711ec-666a-4e37-ac4e-db56de45b735",
+      "name": "If respond"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Technical Support LLM embedded in a Discord support forum for a software system called Postgai.me -- it is a system designed to give users a telephone-based AI interface that lets them talk about a meeting they just had while they're on the go and unable to record notes about that meeting. \n\nYour job is to monitor the last 100 messages in a channel or forum and determine whether to contribute a helpful technical response.\n\nYou are equipped with access to a tool called `GitHub Tool`, which can search and reference the codebase of the software system hosted on GitHub.\n\nYour goal is to:\n1. Read the 100 most recent Discord messages (provided in full text).\n2. Determine if there are any user questions that have not received an accurate, helpful, or complete response.\n3. If so, choose **one** such question and generate a high-quality technical answer.\n4. Return your decision and response in a JSON object with three fields:\n   - `\"respond\"`: `\"yes\"` or `\"no\"` (whether or not you choose to reply)\n   - `\"message\"`: Your response, written as if you're posting in the Discord channel or forum, including any code, documentation links, or references to the GitHub repo.\n   - `\"reasoning\"`: A short explanation of why you chose to respond (e.g., the question was unanswered, clearly stated, likely to affect others, etc.)\n\nGuidelines:\n- Only respond if you can clearly improve the conversation with a useful and accurate reply.\n- If all recent questions have been sufficiently answered, return `\"respond\": \"no\"`.\n- Use the `GitHub Tool` before replying if you need to confirm technical details or locate code.\n- Prefer questions that are:\n  - Unanswered or incorrectly answered,\n  - Clearly stated and technically scoped,\n  - From users who seem confused or stuck,\n  - Waiting for a response the longest.\n- Your response should be helpful, polite, and technically grounded.\n- If needed, include GitHub links using the format: `https://github.com/org/repo/blob/main/path/to/file.js#L25`.\n\nAlways return a single valid JSON object like this:\n\n{\n  \"respond\": \"yes\",\n  \"message\": \"Hey @alex — good question! This error is caused by a mismatch between the schema and the config file. I checked the repo and on line 24 of `loader.js`, it’s expecting a `settings.env` key. Try renaming your config key and let me know if that fixes it!\",\n  \"reasoning\": \"This was a clearly stated question that had not been answered after several follow-up messages from the user. I checked the GitHub repo to verify the root cause.\"\n}\n\nIf no intervention is needed:\n\n{\n  \"respond\": \"no\",\n  \"message\": \"\",\n  \"reasoning\": \"All recent questions were already addressed with accurate, complete answers.\"\n}\n\nHere is the context in which you are choosing to make your decision:\n{{ $json.chat.toJsonString() }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        144,
+        -160
+      ],
+      "id": "4dfb626b-ea81-4f7d-88f9-4e36cd22d38e",
+      "name": "Support Analysis",
+      "credentials": {
+        "openAiApi": {
+          "id": "prOMPRY4CinIaEbs",
+          "name": "OpenAI n8n hayloft prod GCR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## n8n trigger\nFrom community node `n8n-nodes-discord-trigger` uses a special credential to listen for all messages",
+        "height": 288,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -768,
+        -304
+      ],
+      "typeVersion": 1,
+      "id": "c3aab950-5d32-4cd0-9acf-bdedd56e4b59",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Get All Messages node \npulls recent context from Discord from the chat we've been told to pay attention to",
+        "height": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -512,
+        -336
+      ],
+      "typeVersion": 1,
+      "id": "9a223474-9080-492b-9f10-19223bdc44a7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Reformat and Combine\nThese two nodes take the output from the Get All Messages node, paring back to just the relevant conversation we want to give the LLM",
+        "height": 320,
+        "width": 336,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -256,
+        -304
+      ],
+      "typeVersion": 1,
+      "id": "78b76aba-27d7-4d52-b2e3-539c9946d594",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## ChatGPT + Github\nWe prompt ChatGPT to be helpful with technical support, using the Github repo as a resource to understand how the system is supposed to work, where there might be problems.",
+        "height": 496,
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        112,
+        -336
+      ],
+      "typeVersion": 1,
+      "id": "71f6f824-fccc-41d2-925c-f5d4944a819f",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## To send or not to send\nthat is the question ... we parse ChatGPT's assessment of the context",
+        "height": 304,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        480,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "35091cbb-46a1-498a-9eda-ad63caea68af",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Reply to channel\nIf ChatGPT thinks it's worth replying, we post our reply here.",
+        "height": 256,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        736,
+        -368
+      ],
+      "typeVersion": 1,
+      "id": "f85c3638-33c9-4575-b6ec-84acef7cfb0e",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "resource": "repository",
+        "operation": "get",
+        "owner": {
+          "__rl": true,
+          "value": "hayloftlabs",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "https://github.com/hayloftlabs/postgaime-site",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.githubTool",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        0
+      ],
+      "id": "d0456a25-0561-4fe5-ba56-cf2e0bc09a9c",
+      "name": "Github Repo Tool",
+      "webhookId": "0e45a556-d95b-4134-a161-41770334370a",
+      "credentials": {
+        "githubApi": {
+          "id": "lkNIthg5TTZu0djx",
+          "name": "GitHub account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Discord Trigger": {
+      "main": [
+        [
+          {
+            "node": "Gather server-channel context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Support Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gather server-channel context": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If respond": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Support Analysis": {
+      "main": [
+        [
+          {
+            "node": "If respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Github Repo Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support Analysis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "78fc057e-9918-4284-b036-5a8fbdb8de31",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6b530e97c666789f314be9f51ca558451374fddb80a7646d1b4d5d893e2d41f1"
+  },
+  "id": "DkQy7EW2Wi1Tx6UY",
+  "tags": [
+    {
+      "createdAt": "2025-07-31T02:29:17.364Z",
+      "updatedAt": "2025-07-31T02:29:17.364Z",
+      "id": "hIRsQJ9JNNOUo1W8",
+      "name": "Discord"
+    },
+    {
+      "createdAt": "2025-07-31T02:33:15.018Z",
+      "updatedAt": "2025-07-31T02:33:15.018Z",
+      "id": "AxlVzAVLJy0wuSoK",
+      "name": "postgai.me"
+    }
+  ]
+}
